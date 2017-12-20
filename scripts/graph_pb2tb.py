@@ -24,6 +24,7 @@ def load_graph(graph_pb_path):
     content = f.read()
   graph_def = tf.GraphDef()
   graph_def.ParseFromString(content)
+  # Imports the graph from graph_def into the current default Graph.
   with tf.Graph().as_default() as graph:
     tf.import_graph_def(graph_def, name='')
   return graph
