@@ -99,11 +99,15 @@ public class TensorFlowImageClassifier implements Classifier {
     } catch (IOException e) {
       throw new RuntimeException("Problem reading label file!" , e);
     }
-
+      
+    // load the model into a TensorFlowInferenceInterface.
+    // 这里c.inferenceInterface相当于tf吧，毕竟python里面是不需要new对象的，直接导入就可以用了，而在java里面则需要创建。
     c.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
 
     // The shape of the output is [N, NUM_CLASSES], where N is the batch size.
+    // Get the tensorflow node
     final Operation operation = c.inferenceInterface.graphOperation(outputName);
+    // Inspect its shape 检查一下输出层node数目（应与我们的类别数一致）
     final int numClasses = (int) operation.output(0).shape().size(1);
     Log.i(TAG, "Read " + c.labels.size() + " labels, output layer size is " + numClasses);
 
@@ -117,7 +121,9 @@ public class TensorFlowImageClassifier implements Classifier {
     // Pre-allocate buffers.
     c.outputNames = new String[] {outputName};
     c.intValues = new int[inputSize * inputSize];
+    // 存放作为输入层的数据
     c.floatValues = new float[inputSize * inputSize * 3];
+    // Build the output array with the correct size.
     c.outputs = new float[numClasses];
 
     return c;
@@ -142,17 +148,23 @@ public class TensorFlowImageClassifier implements Classifier {
 
     // Copy the input data into TensorFlow.
     Trace.beginSection("feed");
-    inferenceInterface.feed(inputName, floatValues, 1, inputSize, inputSize, 3);
+    inferenceInterface.feed(
+        inputName,   // The name of the node to feed. 
+        floatValues, // The array to feed
+        1, inputSize, inputSize, 3 ); // The shape of the array （第一个维度类似batch_size的意思）
     Trace.endSection();
 
     // Run the inference call.
     Trace.beginSection("run");
+    // outputNames参数是一个数组类型，你可以指定多个输出（其实中间层的输出也可以作为输出，如果这里指定就会将其保存下来）
     inferenceInterface.run(outputNames, logStats);
     Trace.endSection();
 
     // Copy the output Tensor back into the output array.
     Trace.beginSection("fetch");
-    inferenceInterface.fetch(outputName, outputs);
+    inferenceInterface.fetch(
+        outputName,  // Fetch this output.
+        outputs);    // Into the prepared array.
     Trace.endSection();
 
     // Find the best classifications.
